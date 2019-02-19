@@ -17,7 +17,7 @@ nhd_plus_load(vpu, component = "NHDSnapshot", dsn, file_ext = NA,
 \item{file_ext}{character choice of "shp" for spatial data and
 "dbf" for non-spatial. optional}
 
-\item{approve_all_dl}{logical blanket approval to download all missing data}
+\item{approve_all_dl}{logical blanket approval to download all missing data. Defaults to TRUE if sesson is non-interactive}
 
 \item{force_dl}{logical force a re-download of the requested data}
 
@@ -33,12 +33,13 @@ Load NHDplus layers into current session
 }
 \details{
 This function will ask the user to approve downloading missing data
-unless approve_all_dl is set to TRUE.
+unless approve_all_dl is set to TRUE. Output of this function is saved in
+active memory (memoized) to speed up repeated function calls.
 }
 \examples{
 \dontrun{
 # Spatial
-dt <- nhd_plus_load(4, "NHDSnapshot", "NHDWaterbody")#'
+dt <- nhd_plus_load(4, "NHDSnapshot", "NHDWaterbody")
 dt <- nhd_plus_load(c(1,2), "NHDSnapshot", "NHDWaterbody")
 dt <- nhd_plus_load(4, "NHDSnapshot", "NHDFlowline")
 dt <- nhd_plus_load(4, "NHDPlusCatchment", "Catchment")

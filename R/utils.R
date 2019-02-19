@@ -1,7 +1,7 @@
 nhd_path <- function(){
   path <- file.path(rappdirs::user_data_dir(appname = "nhdR",
                                       appauthor = "nhdR"))
-  dir.create(path, showWarnings = FALSE)
+  dir.create(path, showWarnings = FALSE, recursive = TRUE)
   path
 }
 
@@ -103,7 +103,7 @@ find_vpu <- function(pnt){
     pnt <- pnt[,!(names(pnt) %in% "UnitID")]
   }
 
-  res <- st_join(sf::st_sf(pnt), vpu)$UnitID
+  res <- suppressMessages(st_join(sf::st_sf(pnt), vpu)$UnitID)
 
   if(all(is.na(res))){ # pnt is slightly outside of the vpu extent
     res <- vpu[which.min(sf::st_distance(vpu, pnt)),]$UnitID
@@ -276,12 +276,16 @@ great_lakes <- function(spatial = FALSE){
 st_read_custom <- function(x, pretty = FALSE, ...){
   if(isTRUE(pretty)){
     msg <- capture.output(res <- sf::st_read(x, ...))
-    msg <-
-      stringr::str_extract(msg[1],
-                                "([?:`].*)(?=' from data source)")
-    msg <- substring(msg, 2, nchar(msg))
-    message(paste0("Reading layer '", msg, "'"))
-    res
+    if(length(msg) >0){
+      msg <-
+        stringr::str_extract(msg[1],
+                                  "([?:`].*)(?=' from data source)")
+      msg <- substring(msg, 2, nchar(msg))
+      message(paste0("Reading layer '", msg, "'"))
+      res
+    }else{
+      res
+    }
   }else{
     sf::st_read(x, ...)
     # do.call(sf::st_read, c("dsn" = x, arguments))

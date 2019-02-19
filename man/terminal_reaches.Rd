@@ -19,12 +19,12 @@ terminal_reaches(lon = NA, lat = NA, buffer_dist = 0.01,
 
 \item{lakepoly}{sf polygon.  optional. See Details section.}
 
-\item{lakewise}{logical. If TRUE, return the terminal reaches of all lakes
+\item{lakewise}{logical. If TRUE, return the terminal reaches of all lakes.
 in the stream network rather than a single terminal reach of the focal lake.}
 
-\item{lakesize_threshold}{numeric above which to count as a lake (ha)}
+\item{lakesize_threshold}{numeric above which to count as a lake (ha).}
 
-\item{approve_all_dl}{logical blanket approval to download all missing data}
+\item{approve_all_dl}{logical blanket approval to download all missing data. Defaults to TRUE if sesson is non-interactive.}
 
 \item{...}{parameters passed on to sf::st_read}
 }
@@ -53,13 +53,12 @@ library(mapview)
 coords <- data.frame(lat = 46.32711, lon = -89.58893)
 t_reach <- terminal_reaches(coords$lon, coords$lat)
 
-coords  <- data.frame(lat = 44.6265, lon = -86.23121)
-t_reach <- terminal_reaches(coords$lon, coords$lat, lakewise = TRUE)
+coords <- data.frame(lat = 20.79722, lon = -156.47833)
+# use a non-geographic (projected) buffer size
+t_reach <- terminal_reaches(coords$lon, coords$lat,
+        buffer_dist = units::as_units(5, "km"))
 
 coords  <- data.frame(lat = 42.96628 , lon = -89.25264)
-t_reach <- terminal_reaches(coords$lon, coords$lat)
-
-coords  <- data.frame(lat = 20.79722, lon = -156.47833)
 t_reach <- terminal_reaches(coords$lon, coords$lat)
 
 coords  <- data.frame(lat = 41.42217, lon = -73.24189)
@@ -75,7 +74,7 @@ t_reach      <- terminal_reaches(network = network)
 t_reach_lake <- terminal_reaches(network = network, lakewise = TRUE,
                                  lakesize_threshold = 1)
 
-mapview(poly) + mapview(network) + mapview(t_reach, color = "red") +
-mapview(t_reach_lake, color = "green")
+mapview(network) + mapview(t_reach_lake, color = "green") +
+    mapview(t_reach, color = "red")
 }
 }

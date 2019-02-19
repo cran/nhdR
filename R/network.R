@@ -21,10 +21,10 @@
 #' @param network sf lines collection. optional. See Details section.
 #' @param lakepoly sf polygon.  optional. See Details section.
 #' @param buffer_dist numeric buffer around lat-lon point in dec. deg.
-#' @param lakewise logical. If TRUE, return the terminal reaches of all lakes
+#' @param lakewise logical. If TRUE, return the terminal reaches of all lakes.
 #' in the stream network rather than a single terminal reach of the focal lake.
-#' @param lakesize_threshold numeric above which to count as a lake (ha)
-#' @param approve_all_dl logical blanket approval to download all missing data
+#' @param lakesize_threshold numeric above which to count as a lake (ha).
+#' @param approve_all_dl logical blanket approval to download all missing data. Defaults to TRUE if sesson is non-interactive.
 #' @param ... parameters passed on to sf::st_read
 #'
 #' @export
@@ -39,13 +39,12 @@
 #' coords <- data.frame(lat = 46.32711, lon = -89.58893)
 #' t_reach <- terminal_reaches(coords$lon, coords$lat)
 #'
-#' coords  <- data.frame(lat = 44.6265, lon = -86.23121)
-#' t_reach <- terminal_reaches(coords$lon, coords$lat, lakewise = TRUE)
+#' coords <- data.frame(lat = 20.79722, lon = -156.47833)
+#' # use a non-geographic (projected) buffer size
+#' t_reach <- terminal_reaches(coords$lon, coords$lat,
+#'         buffer_dist = units::as_units(5, "km"))
 #'
 #' coords  <- data.frame(lat = 42.96628 , lon = -89.25264)
-#' t_reach <- terminal_reaches(coords$lon, coords$lat)
-#'
-#' coords  <- data.frame(lat = 20.79722, lon = -156.47833)
 #' t_reach <- terminal_reaches(coords$lon, coords$lat)
 #'
 #' coords  <- data.frame(lat = 41.42217, lon = -73.24189)
@@ -61,12 +60,17 @@
 #' t_reach_lake <- terminal_reaches(network = network, lakewise = TRUE,
 #'                                  lakesize_threshold = 1)
 #'
-#' mapview(poly) + mapview(network) + mapview(t_reach, color = "red") +
-#' mapview(t_reach_lake, color = "green")
+#' mapview(network) + mapview(t_reach_lake, color = "green") +
+#'     mapview(t_reach, color = "red")
 #' }
 terminal_reaches <- function(lon = NA, lat = NA, buffer_dist = 0.01,
                              network = NA, lakepoly = NA, lakewise = FALSE,
-                             lakesize_threshold = 4, approve_all_dl = FALSE, ...){
+                             lakesize_threshold = 4, approve_all_dl = FALSE,
+                             ...){
+
+  if(!interactive()){
+    approve_all_dl = TRUE
+  }
 
   if(all(is.na(network))){
     pnt         <- st_sfc(st_point(c(lon, lat)))
@@ -95,15 +99,17 @@ terminal_reaches <- function(lon = NA, lat = NA, buffer_dist = 0.01,
     if(nrow(poly) == 0){
       stop("No lake polygon found at query point")
     }
-    network_lines <- nhd_plus_query(poly = poly,
-                                    dsn = "NHDFlowline", ...)$sp$NHDFlowline
 
-    if(nrow(network_lines) == 0){
+    network_lines <- nhd_plus_query(poly = poly,
+                                    dsn = "NHDFlowline",
+                                    ...)$sp$NHDFlowline
+
+    if(nrow(network_lines) == 0 | length(network_lines) == 0){
       stop("No streams intersect this lake polygon")
     }
   }else{
     network_lines <- network
-    vpu <- find_vpu(st_centroid(st_union(network_lines)))
+    vpu           <- find_vpu(st_centroid(st_union(network_lines)))
   }
 
   # network_lines <- dplyr::filter(network_lines,
@@ -133,7 +139,7 @@ terminal_reaches <- function(lon = NA, lat = NA, buffer_dist = 0.01,
                  units::as_units(lakesize_threshold, "ha"),]
 
     intersecting_reaches <- network_lines[unlist(lapply(
-      st_intersects(network_lines, poly), function(x) length(x) > 0)),]
+      suppressMessages(st_intersects(network_lines, poly)), function(x) length(x) > 0)),]
 
     network_table <- dplyr::filter(network_table,
                                    .data$fromcomid %in% intersecting_reaches$comid)
@@ -185,13 +191,17 @@ terminal_reaches <- function(lon = NA, lat = NA, buffer_dist = 0.01,
 leaf_reaches <- function(lon = NA, lat = NA, network = NA,
                          approve_all_dl = FALSE, ...){
 
+  if(!interactive()){
+    approve_all_dl = TRUE
+  }
+
   if(all(is.na(network))){
     pnt <- sf::st_sfc(sf::st_point(c(lon, lat)))
     sf::st_crs(pnt) <- sf::st_crs(nhdR::vpu_shp)
     vpu <- find_vpu(pnt)
 
     poly <- nhd_plus_query(lon, lat, dsn = "NHDWaterbody",
-                    buffer_dist = 0.01,
+                    buffer_dist = units::as_units(0.5, "km"),
                     approve_all_dl = approve_all_dl, ...)$sp$NHDWaterbody
     poly          <- poly[which.max(st_area(poly)),] # find lake polygon
     network_lines <- nhd_plus_query(poly = poly,
@@ -236,6 +246,7 @@ leaf_reaches <- function(lon = NA, lat = NA, network = NA,
 #' @inheritParams terminal_reaches
 #' @param maxsteps maximum number of stream climbing iterations
 #' @param lines sf spatial lines object to limit the extent of the network search
+#' @param ... parameters passed on to sf::st_read
 #'
 #' @export
 #'
@@ -252,6 +263,11 @@ leaf_reaches <- function(lon = NA, lat = NA, network = NA,
 #' res <- extract_network(coords$lon, coords$lat, maxsteps = 9)
 #'
 #' coords <- data.frame(lat = 20.79722, lon = -156.47833)
+#' # use a non-geographic (projected) buffer size
+#' res <- extract_network(coords$lon, coords$lat, maxsteps = 9,
+#'         buffer_dist = units::as_units(5, "km"))
+#'
+#' # use a projected buffer size
 #' res <- extract_network(coords$lon, coords$lat, maxsteps = 9)
 #'
 #' # no upstream network for lakes intersecting the Great Lakes
@@ -266,7 +282,11 @@ leaf_reaches <- function(lon = NA, lat = NA, network = NA,
 #' }
 extract_network <- function(lon = NA, lat = NA, lines = NA,
                             buffer_dist = 0.01, maxsteps = 3,
-                            approve_all_dl = FALSE){
+                            approve_all_dl = FALSE, ...){
+
+  if(!interactive()){
+    approve_all_dl <- TRUE
+  }
 
   if(length(lon) > 1 | length(lat) > 1){
     stop("extract_network only accepts a single lon-lat pair.")
@@ -288,7 +308,8 @@ extract_network <- function(lon = NA, lat = NA, lines = NA,
   }
 
   t_reaches     <- terminal_reaches(lon, lat, buffer_dist = buffer_dist,
-                                    lakewise = TRUE, pretty = TRUE)
+                                    lakewise = TRUE, pretty = TRUE,
+                                    approve_all_dl = approve_all_dl, ...)
   temp_reaches  <- neighbors(t_reaches$comid, network_table, direction = "up")
   res_reaches   <- temp_reaches
 
@@ -316,7 +337,7 @@ extract_network <- function(lon = NA, lat = NA, lines = NA,
     # lines_file <- lines_file[grep("NHDFlowline", lines_file)]
     if(all(is.na(lines))){
       lines        <- nhd_plus_load(vpu, "NHDSnapshot", "NHDFlowline",
-                                    pretty = TRUE)
+                                    pretty = TRUE, approve_all_dl = approve_all_dl, ...)
       names(lines) <- tolower(names(lines))
     }
 
@@ -332,7 +353,7 @@ extract_network <- function(lon = NA, lat = NA, lines = NA,
     }
 
     # pull first order streams
-    l_reach <- leaf_reaches(network = res, pretty = TRUE)
+    l_reach <- leaf_reaches(network = res, pretty = TRUE, approve_all_dl = approve_all_dl)
     if(nrow(l_reach) > 0){
       first_order_reaches <- neighbors(l_reach$comid, network_table,
                                         direction = "up")

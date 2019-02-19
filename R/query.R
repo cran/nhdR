@@ -6,7 +6,7 @@
 #' @param poly sfc polygon. optional
 #' @param dsn character data source
 #' @param buffer_dist numeric buffer in units of coordinate degrees
-#' @param approve_all_dl logical blanket approval to download all missing data
+#' @param approve_all_dl logical blanket approval to download all missing data. Defaults to TRUE if sesson is non-interactive.
 #' @param ... parameters passed on to sf::st_read
 #' @examples \dontrun{
 #' library(sf)
@@ -45,12 +45,16 @@ nhd_plus_query <- function(lon = NA, lat = NA, poly = NA,
                            dsn, buffer_dist = 0.05, approve_all_dl = FALSE,
                            ...){
 
+  if(!interactive()){
+    approve_all_dl = TRUE
+  }
+
   if(all(!is.na(c(lon, lat, poly)))){
     stop("Must specify either lon and lat or poly but not both.")
   }
 
   # ! in default buffer size for query or extract
-  if(!is.na(poly) & !(buffer_dist %in% c(0.01, 0.05))){
+  if(all(!is.na(poly)) & !(buffer_dist %in% c(0.01, 0.05))){
     stop("Passing a polygon object returns only polygon-intersecting lines and disregards any buffer_dist setting.")
   }
 

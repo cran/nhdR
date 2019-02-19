@@ -5,7 +5,7 @@
 \title{Return nhd plus stream network upstream of a waterbody}
 \usage{
 extract_network(lon = NA, lat = NA, lines = NA, buffer_dist = 0.01,
-  maxsteps = 3, approve_all_dl = FALSE)
+  maxsteps = 3, approve_all_dl = FALSE, ...)
 }
 \arguments{
 \item{lon}{numeric decimal degree longitude}
@@ -18,7 +18,9 @@ extract_network(lon = NA, lat = NA, lines = NA, buffer_dist = 0.01,
 
 \item{maxsteps}{maximum number of stream climbing iterations}
 
-\item{approve_all_dl}{logical blanket approval to download all missing data}
+\item{approve_all_dl}{logical blanket approval to download all missing data. Defaults to TRUE if sesson is non-interactive.}
+
+\item{...}{parameters passed on to sf::st_read}
 }
 \description{
 Return nhd plus stream network upstream of a waterbody
@@ -42,6 +44,11 @@ coords <- data.frame(lat = 43.62453, lon = -85.47164)
 res <- extract_network(coords$lon, coords$lat, maxsteps = 9)
 
 coords <- data.frame(lat = 20.79722, lon = -156.47833)
+# use a non-geographic (projected) buffer size
+res <- extract_network(coords$lon, coords$lat, maxsteps = 9,
+        buffer_dist = units::as_units(5, "km"))
+
+# use a projected buffer size
 res <- extract_network(coords$lon, coords$lat, maxsteps = 9)
 
 # no upstream network for lakes intersecting the Great Lakes
