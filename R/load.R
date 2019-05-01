@@ -4,7 +4,7 @@
 #' @param dsn character name of a NHD layer
 #' @param file_ext character choice of "shp" for spatial data and
 #' "dbf" or "gpkg" for non-spatial. optional
-#' @param approve_all_dl logical blanket approval to download all missing data. Defaults to TRUE if sesson is non-interactive.
+#' @param approve_all_dl logical blanket approval to download all missing data. Defaults to TRUE if session is non-interactive.
 #' @param ... arguments passed to sf::st_read
 #'
 #' @return Spatial simple features object or data frame depending on the dsn
@@ -132,7 +132,7 @@ nhd_load <- function(state, dsn, file_ext = NA, approve_all_dl = FALSE, ...){
 #' @param dsn data source name
 #' @param file_ext character choice of "shp" for spatial data and
 #' "dbf" for non-spatial. optional
-#' @param approve_all_dl logical blanket approval to download all missing data. Defaults to TRUE if sesson is non-interactive
+#' @param approve_all_dl logical blanket approval to download all missing data. Defaults to TRUE if session is non-interactive
 #' @param force_dl logical force a re-download of the requested data
 #' @param pretty more minimal pretty printing st_read relative to "quiet"
 #' @param ... parameters passed on to sf::st_read
@@ -186,7 +186,6 @@ nhd_plus_load <- memoise::memoise(function(vpu, component = "NHDSnapshot", dsn,
   }
 
   nhd_plus_load_vpu <- function(vpu, component, dsn, pretty, ...){
-
       vpu_path <- list.files(file.path(nhd_path(), "NHDPlus"),
                              include.dirs = TRUE, full.names = TRUE)
 
@@ -244,6 +243,18 @@ nhd_plus_load <- memoise::memoise(function(vpu, component = "NHDSnapshot", dsn,
                        component = component, dsn = dsn, pretty = pretty,
                        ...)
   is_spatial <- unlist(lapply(res, function(x) x$is_spatial))
+
+  # resolve common names among vpus (https://github.com/jsta/nhdR/issues/57)
+  names_template <- which.min(unlist(
+    lapply(res, function(x) length(names(x$res)))))
+  names_template <- names(res[[names_template]]$res)
+
+  res <- lapply(res, function(x){
+    names(x$res) <- align_names(names(x$res), names_template)
+    x$res <- x$res[,names_template]
+    x
+    })
+
   res        <- do.call("rbind", lapply(res, function(x) x$res))
 
   if(any(is_spatial)){
