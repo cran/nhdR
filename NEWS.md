@@ -1,3 +1,8 @@
+# nhdR 0.5.3
+
+* Update URL endpoint for NHDPlus
+* Fix crs tests for upcoming sf release
+
 # nhdR 0.5.2
 
 * Bug fix for multi-vpu data loading with mismatched columns (#57)

@@ -41,8 +41,10 @@ get_if_not_exists <- function(url, destfile, force_dl = FALSE){
 }
 
 zero_pad <- function(x, digits){
-  if(nchar(x) < 2){
-    paste0(paste0(rep(0, digits), collapse = ""), x, collapse = "")
+  if(nchar(stringr::str_extract(x, "\\d+")) < 2){
+    paste0(
+      paste0(
+        rep(0, digits), collapse = ""), x, collapse = "")
   }else{
     x
   }
@@ -57,9 +59,9 @@ get_remotepath <- function(state, baseurl){
 
 get_plus_remotepath <- function(vpu, component = "NHDSnapshot"){
   if(vpu == "National"){
-    baseurl <- "http://www.horizon-systems.com/NHDPlus/V2NationalData.php"
+    baseurl <- "https://nhdplus.com/NHDPlus/V2NationalData.php"
   }else{
-    baseurl <- paste0("http://www.horizon-systems.com/nhdplus/NHDPlusV2_",
+    baseurl <- paste0("https://nhdplus.com/NHDPlus/NHDPlusV2_",
                     zero_pad(vpu, 1), ".php")
   }
 

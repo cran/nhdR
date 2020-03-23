@@ -1,41 +1,41 @@
-## ----setup, include = FALSE----------------------------------------------
+## ----setup, include = FALSE---------------------------------------------------
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
 
-## ----message=FALSE, warning=FALSE----------------------------------------
+## ----message=FALSE, warning=FALSE---------------------------------------------
 library(nhdR)
 library(dplyr)
 library(ggplot2)
 library(sf)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 ggplot() + 
   geom_sf(data = gull$sp$NHDWaterbody) + 
   geom_sf(data = gull$sp$NHDFlowLine)
 
 gull_sf <- gull$sp$NHDFlowLine
 
-## ----eval=FALSE----------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  eromflow  <- nhd_plus_load(4, "EROMExtension", "EROM_MA0001") %>%
 #    filter(ComID %in% gull$sp$NHDFlowLine$COMID) %>%
 #    select(ComID, Q0001F)
 #  
 #  gull_sf <- left_join(gull_sf, eromflow, by = c("COMID" = "ComID"))
 
-## ----eval=FALSE----------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  vogelflow  <- nhd_plus_load(4, "VogelExtension", "vogelflow") %>%
 #    filter(COMID %in% gull$sp$NHDFlowLine$COMID,
 #           MAFLOWV != -9999.00000)
 #  
 #  gull_sf <- left_join(gull_sf, vogelflow, by = "COMID")
 
-## ----echo=FALSE----------------------------------------------------------
+## ----echo=FALSE---------------------------------------------------------------
 # gull_sf <- dplyr::select(gull_sf, -Q0001F:-MAVELV)
 gull_sf <- gull_flow
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 gull_sf <- dplyr::filter(gull_sf, !is.na(Q0001F)) 
 gull_sf %>%  
   ggplot() + 
