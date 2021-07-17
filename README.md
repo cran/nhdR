@@ -18,6 +18,22 @@ datasets.
 
 ## Installation
 
+CRAN policy is that no package can write to a persistent location by
+default. As a result, `nhdR` writes all data to a temporary location
+unless a `temporary = FALSE` argument is passed to the
+`nhd_plus_get`/`nhd_get` functions. Alternatively, `nhdR` will
+automatically write data to a persistent location if the `nhdR_path`
+environment variable is set. To do this, add the following line to your
+`.Rprofile`:
+
+``` r
+Sys.setenv(nhdR_path = file.path(rappdirs::user_data_dir(appname = "nhdR",
+      appauthor = "nhdR")))
+```
+
+Your `.Rprofile` file can be edited using the
+`usethis::edit_r_profile()` function.
+
 ### Stable version from CRAN
 
 ``` r

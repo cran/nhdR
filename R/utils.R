@@ -1,8 +1,23 @@
-nhd_path <- function() {
-  path <- file.path(rappdirs::user_data_dir(appname = "nhdR",
-    appauthor = "nhdR"))
-  dir.create(path, showWarnings = FALSE, recursive = TRUE)
-  path
+nhd_path <- function(temporary = TRUE) {
+  if (nchar(Sys.getenv("nhdR_path")) != 0) {
+    path <- Sys.getenv("nhdR_path")
+    return(path)
+  }
+
+  if (temporary) {
+    warning(
+      "Recommended: set the 'temporary' argument to FALSE to save data to a
+      persistent rappdirs location.")
+    path <- tempdir()
+    Sys.setenv(nhdR_path = path)
+    return(path)
+  } else {
+    path <- file.path(rappdirs::user_data_dir(appname = "nhdR",
+      appauthor = "nhdR"))
+    dir.create(path, showWarnings = FALSE, recursive = TRUE)
+    Sys.setenv(nhdR_path = path)
+    return(path)
+  }
 }
 
 gdb_path <- function(state) {
@@ -101,6 +116,7 @@ is_spatial <- function(filename) {
 #' @importFrom sf st_transform st_crs st_join st_distance
 #' @importFrom dplyr select
 #' @export
+#' @return A character vector of vpu ids
 #'
 #' @examples \dontrun{
 #' library(sf)
@@ -115,8 +131,13 @@ is_spatial <- function(filename) {
 #' find_vpu(nhdR::gull$sp$NHDWaterbody)
 #' }
 find_vpu <- function(pnt) {
-  pnt <- sf::st_transform(pnt, sf::st_crs(nhdR::vpu_shp))
-  vpu <- nhdR::vpu_shp[nhdR::vpu_shp$UnitType == "VPU", ]
+  # fix for older proj versions (solaris)
+  # https://stackoverflow.com/a/62268361/3362993
+  vpu <- nhdR::vpu_shp
+  sf::st_crs(vpu$geometry) <- 4326
+
+  pnt <- sf::st_transform(pnt, sf::st_crs(vpu))
+  vpu <- vpu[vpu$UnitType == "VPU", ]
 
   if (any(names(pnt) == "UnitID")) {
     pnt <- pnt[, !(names(pnt) %in% "UnitID")]
@@ -134,6 +155,7 @@ find_vpu <- function(pnt) {
 find_state <- function(pnt) {
   state_data_sf <- sf::st_as_sf(map("state", plot = FALSE, fill = TRUE))
   res <- sf::st_transform(state_data_sf, sf::st_crs(pnt))
+  res <- make_valid_geom_s2(res)
 
   res_intersects <- sf::st_intersects(res, pnt)
 
@@ -164,6 +186,7 @@ long2UTM <- function(long) {
 #'
 #' @importFrom sf st_transform st_crs
 #' @export
+#' @return A transformed sf object
 #'
 #' @examples \dontrun{
 #' data(gull)
@@ -213,6 +236,7 @@ is_gpkg_installed <- function() {
 #'
 #' @importFrom sf st_as_sfc
 #' @export
+#' @return An sfc object from the sf package
 #' @examples \dontrun{
 #' library(sf)
 #' wk <- wikilake::lake_wiki("Gull Lake (Michigan)")
@@ -269,6 +293,8 @@ albers_conic <- function() {
 #' @importFrom sf st_as_sf
 #' @export
 #' @param spatial logical, return Great Lakes polygons?
+#' @return A data frame of North America Great Lakes with
+#'  optional geometry column
 #' @examples
 #' gl <- great_lakes()
 #' \dontrun{
@@ -334,4 +360,18 @@ align_names <- function(to, from) {
     }
   }
   res
+}
+
+# https://github.com/r-spatial/s2/issues/99#issuecomment-827776431
+make_valid_geom_s2 <- function(sf_object) {
+  sf_s2 <- s2::s2_rebuild(
+    s2::as_s2_geography(sf_object, check = FALSE),
+    options = s2::s2_options(
+      edge_type = "undirected", split_crossing_edges = TRUE, validate = TRUE
+    )
+  )
+  # all(s2::s2_is_valid(vpu_s2))
+
+  sf::st_geometry(sf_object) <- sf::st_as_sfc(sf_s2)
+  sf_object
 }

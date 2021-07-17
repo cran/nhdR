@@ -1,6 +1,6 @@
 Package: nhdR
-Title: Tools for working with the National Hydrography Dataset
-Version: 0.5.5
+Title: Tools for Working with the National Hydrography Dataset
+Version: 0.5.6
 Authors@R: person("Jemma", "Stachelek", email = "stachel2@msu.edu", role = c("aut", "cre"), comment = c(ORCID = "0000-0002-5924-2464"))
 Description: Tools for working with the National Hydrography Dataset, with 
     functions for querying, downloading, and networking both the NHD 
@@ -21,8 +21,8 @@ VignetteBuilder: knitr
 SystemRequirements: 7-zip command line tool (7z)
 Language: en-US
 NeedsCompilation: no
-Packaged: 2021-06-06 14:24:20 UTC; jemma
+Packaged: 2021-07-13 15:38:40 UTC; jemma
 Author: Jemma Stachelek [aut, cre] (<https://orcid.org/0000-0002-5924-2464>)
 Maintainer: Jemma Stachelek <stachel2@msu.edu>
 Repository: CRAN
-Date/Publication: 2021-06-06 15:30:02 UTC
+Date/Publication: 2021-07-17 10:00:02 UTC

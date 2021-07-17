@@ -17,6 +17,9 @@ leaf_reaches(lon = NA, lat = NA, network = NA, approve_all_dl = FALSE, ...)
 
 \item{...}{parameters passed on to sf::st_read}
 }
+\value{
+An sf data frame with LINESTRING geometries
+}
 \description{
 A leaf reach is a stream flowline that has upstream connections but is
 not in the focal set.
@@ -30,7 +33,7 @@ coords  <- data.frame(lat = 41.42217, lon = -73.24189)
 l_reach <- leaf_reaches(coords$lon, coords$lat)
 
 network <- nhd_plus_query(lon = coords$lon, lat = coords$lat,
-                          dsn = "NHDFlowline", buffer_dist = 0.02)$sp$NHDFlowline
+  dsn = "NHDFlowline", buffer_dist = 0.02)$sp$NHDFlowline
 l_reach <- leaf_reaches(network = network)
 
 plot(network$geometry)

@@ -1,3 +1,8 @@
+# nhdR 0.5.6
+
+* CRAN maintenance release
+* Added support for recent `sf` package versions depending on `s2` geometry
+
 # nhdR 0.5.5
 
 * Drop automatic conversion to Geopackage for NHD (non-plus) products
