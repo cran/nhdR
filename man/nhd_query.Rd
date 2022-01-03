@@ -4,29 +4,60 @@
 \alias{nhd_query}
 \title{Select NHD features clipped by a circular buffer a coordinate pair}
 \usage{
-nhd_query(lon, lat, dsn, buffer_dist = 0.05)
+nhd_query(
+  lon = NA,
+  lat = NA,
+  poly = NA,
+  dsn,
+  approve_all_dl = FALSE,
+  buffer_dist = units::as_units(4.75, "km"),
+  temporary = TRUE,
+  ...
+)
 }
 \arguments{
 \item{lon}{numeric longitude}
 
 \item{lat}{numeric latitude}
 
+\item{poly}{sfc polygon. optional}
+
 \item{dsn}{character data source}
 
-\item{buffer_dist}{numeric buffer in units of coordinate degrees}
+\item{approve_all_dl}{logical blanket approval to download all missing data.
+Defaults to TRUE if session is non-interactive.}
+
+\item{buffer_dist}{numeric buffer with specified units}
+
+\item{temporary}{logical set FALSE to save data to a persistent
+rappdirs location}
+
+\item{\dots}{other arguments passed to sf::st_read}
 }
 \description{
 Select NHD features clipped by a circular buffer a coordinate pair
 }
 \examples{
 \dontrun{
+library(sf)
 wk <- wikilake::lake_wiki("Worden Pond")
-qry <- nhd_query(wk$Lon, wk$Lat, dsn = c("NHDWaterbody", "NHDFlowline"))
+qry <- nhd_query(wk$Lon, wk$Lat, dsn = c("NHDWaterbody", "NHDFlowLine"),
+  buffer_dist = units::as_units(1, "km"))
+qry$sp$NHDWaterbody <- dplyr::filter(qry$sp$NHDWaterbody, FType != 466)
 
 plot(sf::st_geometry(qry$sp$NHDWaterbody), col = "blue")
-plot(sf::st_geometry(qry$sp$NHDFlowline), col = "cyan", add = TRUE)
+plot(sf::st_geometry(qry$sp$NHDFlowLine), col = "cyan", add = TRUE)
 plot(qry$pnt, col = "red", pch = 19, add = TRUE)
 axis(1)
 axis(2)
+
+# query with a polygon
+wbd <- qry$sp$NHDWaterbody[
+  order(st_area(qry$sp$NHDWaterbody), decreasing = TRUE), ][1, ]
+qry_lines <- nhd_query(poly = st_as_sfc(st_bbox(wbd)), dsn = "NHDFlowLine")
+library(ggplot2)
+ggplot() +
+  geom_sf(data = qry$sp$NHDWaterbody) +
+  geom_sf(data = qry_lines$sp$NHDFlowLine, color = "red")
 }
 }

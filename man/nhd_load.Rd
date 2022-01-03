@@ -4,7 +4,15 @@
 \alias{nhd_load}
 \title{Load NHD layers into current session}
 \usage{
-nhd_load(state, dsn, file_ext = NA, approve_all_dl = FALSE, ...)
+nhd_load(
+  state,
+  dsn,
+  file_ext = NA,
+  approve_all_dl = FALSE,
+  temporary = FALSE,
+  wkt_filter = NA,
+  ...
+)
 }
 \arguments{
 \item{state}{character state abbreviation}
@@ -14,7 +22,14 @@ nhd_load(state, dsn, file_ext = NA, approve_all_dl = FALSE, ...)
 \item{file_ext}{character choice of "shp" for spatial data and
 "dbf" or "gpkg" for non-spatial. optional}
 
-\item{approve_all_dl}{logical blanket approval to download all missing data. Defaults to TRUE if session is non-interactive.}
+\item{approve_all_dl}{logical blanket approval to download all missing data.
+Defaults to TRUE if session is non-interactive.}
+
+\item{temporary}{logical set FALSE to save data to a persistent
+rappdirs location}
+
+\item{wkt_filter}{character. WKT spatial filter for selection.
+See sf::st_read}
 
 \item{...}{arguments passed to sf::st_read}
 }
@@ -38,5 +53,10 @@ dt <- nhd_load("MI", "NHDFlowline")
 dt <- nhd_load("RI", "NHDReachCrossReference")
 dt <- nhd_load("RI", "NHDWaterbody", file_ext = "dbf")
 dt <- nhd_load(c("RI", "DC"), "NHDWaterbody", file_ext = "gpkg")
+
+dt <- nhd_load("RI", "NHDWaterbody", wkt_filter = "POINT (-71.575 41.438)")
+
+dt <- nhd_load("RI", "NHDFlowline", pretty = FALSE, quiet = TRUE,
+  query = paste0("SELECT * from ", "NHDFlowline", " LIMIT 1"))
 }
 }

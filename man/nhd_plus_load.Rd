@@ -11,6 +11,7 @@ nhd_plus_load(
   file_ext = NA,
   approve_all_dl = FALSE,
   force_dl = FALSE,
+  temporary = FALSE,
   pretty = FALSE,
   wkt_filter = NA,
   ...
@@ -26,13 +27,18 @@ nhd_plus_load(
 \item{file_ext}{character choice of "shp" for spatial data and
 "dbf" for non-spatial. optional}
 
-\item{approve_all_dl}{logical blanket approval to download all missing data. Defaults to TRUE if session is non-interactive}
+\item{approve_all_dl}{logical blanket approval to download all missing data.
+Defaults to TRUE if session is non-interactive}
 
 \item{force_dl}{logical force a re-download of the requested data}
 
+\item{temporary}{logical set FALSE to save data to a persistent
+rappdirs location}
+
 \item{pretty}{more minimal pretty printing st_read relative to "quiet"}
 
-\item{wkt_filter}{character. WKT spatial filter for selection. See sf::st_read}
+\item{wkt_filter}{character. WKT spatial filter for selection.
+See sf::st_read}
 
 \item{...}{parameters passed on to sf::st_read}
 }
@@ -51,7 +57,7 @@ active memory (memoized) to speed up repeated function calls.
 \dontrun{
 # Spatial
 dt <- nhd_plus_load(4, "NHDSnapshot", "NHDWaterbody")
-dt <- nhd_plus_load(c(1,2), "NHDSnapshot", "NHDWaterbody")
+dt <- nhd_plus_load(c(1, 2), "NHDSnapshot", "NHDWaterbody")
 dt <- nhd_plus_load(4, "NHDSnapshot", "NHDFlowline")
 dt <- nhd_plus_load(4, "NHDPlusCatchment", "Catchment")
 
@@ -63,7 +69,7 @@ dt <- nhd_plus_load(4, "NHDSnapshot", "NHDWaterbody", quiet = TRUE)
 # Non-spatial
 dt <- nhd_plus_load(1, "NHDPlusAttributes", "PlusFlow")
 dt <- nhd_plus_load("National", "V1_To_V2_Crosswalk",
- "NHDPlusV1Network_V2Network_Crosswalk")
+  "NHDPlusV1Network_V2Network_Crosswalk")
 gridcode      <- nhd_plus_load(1, "NHDPlusCatchment", "featuregridcode")
 flowline_vaa  <- nhd_plus_load(1, "NHDPlusAttributes", "PlusFlowlineVAA")
 eromflow      <- nhd_plus_load(4, "EROMExtension", "EROM_010001")
@@ -73,6 +79,5 @@ plusflow <- nhd_plus_load(vpu = "10L", "NHDPlusAttributes", "PlusFlow")
 
 # Spatial filtering via wkt_filter
 dt <- nhd_plus_load(4, "NHDSnapshot", "NHDWaterbody", wkt_filter = "POINT (-85.411 42.399)")
-
 }
 }

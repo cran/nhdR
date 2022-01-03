@@ -8,9 +8,11 @@ extract_network(
   lon = NA,
   lat = NA,
   lines = NA,
+  lines_network = TRUE,
   buffer_dist = 0.01,
   maxsteps = 3,
   approve_all_dl = FALSE,
+  temporary = TRUE,
   ...
 )
 }
@@ -19,13 +21,21 @@ extract_network(
 
 \item{lat}{numeric decimal degree latitude}
 
-\item{lines}{sf spatial lines object to limit the extent of the network search}
+\item{lines}{sf spatial lines object to limit extent of the network search}
+
+\item{lines_network}{boolean treat lines as the complete network object.
+If FALSE, simply start network extraction at the terminal reach of the
+lines object.}
 
 \item{buffer_dist}{numeric buffer around lat-lon point in dec. deg.}
 
 \item{maxsteps}{maximum number of stream climbing iterations}
 
-\item{approve_all_dl}{logical blanket approval to download all missing data. Defaults to TRUE if session is non-interactive.}
+\item{approve_all_dl}{logical blanket approval to download all missing data.
+Defaults to TRUE if session is non-interactive.}
+
+\item{temporary}{logical set FALSE to save data to a persistent
+rappdirs location}
 
 \item{...}{parameters passed on to sf::st_read}
 }

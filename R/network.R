@@ -21,10 +21,13 @@
 #' @param network sf lines collection. optional. See Details section.
 #' @param lakepoly sf polygon.  optional. See Details section.
 #' @param buffer_dist numeric buffer around lat-lon point in dec. deg.
-#' @param lakewise logical. If TRUE, return the terminal reaches of all lakes.
+#' @param lakewise logical. If TRUE, return the terminal reaches of all lakes
 #' in the stream network rather than a single terminal reach of the focal lake.
 #' @param lakesize_threshold numeric above which to count as a lake (ha).
-#' @param approve_all_dl logical blanket approval to download all missing data. Defaults to TRUE if session is non-interactive.
+#' @param approve_all_dl logical blanket approval to download all missing data.
+#' Defaults to TRUE if session is non-interactive.
+#' @param temporary logical set FALSE to save data to a persistent
+#'  rappdirs location
 #' @param ... parameters passed on to sf::st_read
 #' @return An sf data frame with LINESTRING geometries
 #'
@@ -67,6 +70,7 @@
 terminal_reaches <- function(lon = NA, lat = NA, buffer_dist = 0.01,
                              network = NA, lakepoly = NA, lakewise = FALSE,
                              lakesize_threshold = 4, approve_all_dl = FALSE,
+                             temporary = TRUE,
                              ...) {
 
   if (!interactive()) {
@@ -80,7 +84,8 @@ terminal_reaches <- function(lon = NA, lat = NA, buffer_dist = 0.01,
 
     poly <- nhd_plus_query(lon, lat, dsn = "NHDWaterbody",
       buffer_dist = buffer_dist,
-      approve_all_dl = approve_all_dl, ...)$sp$NHDWaterbody
+      approve_all_dl = approve_all_dl,
+      temporary = temporary, ...)$sp$NHDWaterbody
 
     if (nrow(poly) == 0) {
       stop("No lake polygon found at query point")
@@ -115,14 +120,14 @@ terminal_reaches <- function(lon = NA, lat = NA, buffer_dist = 0.01,
     }
   } else {
     network_lines <- network
-    vpu           <- suppressWarnings(find_vpu(st_centroid(st_union(network_lines))))
+    vpu <- suppressWarnings(find_vpu(st_centroid(st_union(network_lines))))
   }
 
   # network_lines <- dplyr::filter(network_lines,
   #                                rlang::.data$FTYPE != "Coastline")
 
   network_table <- nhd_plus_load(vpu = vpu, "NHDPlusAttributes",
-    "PlusFlow", approve_all_dl = approve_all_dl, ...)
+    "PlusFlow", approve_all_dl = approve_all_dl, temporary = temporary, ...)
   names(network_table) <- tolower(names(network_table))
   names(network_lines) <- tolower(names(network_lines))
 
@@ -139,15 +144,17 @@ terminal_reaches <- function(lon = NA, lat = NA, buffer_dist = 0.01,
       nhd_plus_query(poly = st_convex_hull(
         st_union(st_cast(network_lines, "MULTILINESTRING"))),
       dsn = "NHDWaterbody",
-      buffer_dist = 0.01,
-      approve_all_dl = approve_all_dl, ...)$sp$NHDWaterbody)
+      approve_all_dl = approve_all_dl,
+      temporary = temporary,
+      ...)$sp$NHDWaterbody)
 
     poly <- poly[st_area(poly) >
       units::as_units(lakesize_threshold, "ha"), ]
     poly <- st_transform(poly, st_crs(network_lines))
 
     intersecting_reaches <- network_lines[unlist(lapply(
-      suppressMessages(st_intersects(network_lines, poly)), function(x) length(x) > 0)), ]
+      suppressMessages(st_intersects(network_lines, poly)),
+      function(x) length(x) > 0)), ]
 
     network_table <- dplyr::filter(network_table,
       .data$fromcomid %in% intersecting_reaches$comid)
@@ -183,23 +190,47 @@ terminal_reaches <- function(lon = NA, lat = NA, buffer_dist = 0.01,
 #'
 #' @examples \dontrun{
 #' coords <- data.frame(lat = 20.79722, lon = -156.47833)
+#' # nhd_plus_get(
+#' #  nhdR::find_vpu(
+#' #    sf::st_as_sf(coords, coords = c("lon", "lat"), crs = 4326)),
+#' # temporary = FALSE)
 #' leaf_reaches(coords$lon, coords$lat)
 #'
 #' coords  <- data.frame(lat = 41.42217, lon = -73.24189)
 #' l_reach <- leaf_reaches(coords$lon, coords$lat)
 #'
+#' network_focal <- nhd_plus_query(lon = coords$lon, lat = coords$lat,
+#'   dsn = "NHDFlowline", buffer_dist = units::as_units(2, "km"))$sp$NHDFlowline
 #' network <- nhd_plus_query(lon = coords$lon, lat = coords$lat,
-#'   dsn = "NHDFlowline", buffer_dist = 0.02)$sp$NHDFlowline
-#' l_reach <- leaf_reaches(network = network)
+#'   dsn = "NHDFlowline", buffer_dist = units::as_units(5, "km"))$sp$NHDFlowline
+#' l_reach <- leaf_reaches(network = network_focal)
 #'
 #' plot(network$geometry)
+#' plot(network_focal$geometry, col = "darkgreen", add=TRUE)
 #' plot(l_reach$geometry, col = "red", add = TRUE)
 #' }
 leaf_reaches <- function(lon = NA, lat = NA, network = NA,
-                         approve_all_dl = FALSE, ...) {
+                         approve_all_dl = FALSE, temporary = TRUE, ...) {
 
   if (!interactive()) {
     approve_all_dl <- TRUE
+  }
+
+  if (all(is.na(c(lon, lat))) & all(!is.na(network))){
+    if(nrow(network) == 0) {
+    stop("network objects must have at least one linestring.")
+    }
+  }
+
+  # if coords are na attempt to pull from lines object
+  if (all(is.na(c(lon, lat)))) {
+    # line_sample doesn't allow 4326 operations :(
+    coords <- sf::st_transform(st_cast(
+      sf::st_line_sample(sf::st_transform(network, 3395), sample = 0),
+      "POINT"), 4326)
+    coords <- st_coordinates(coords)
+    lon <- coords[1]
+    lat <- coords[2]
   }
 
   if (all(is.na(network))) {
@@ -209,7 +240,8 @@ leaf_reaches <- function(lon = NA, lat = NA, network = NA,
 
     poly <- nhd_plus_query(lon, lat, dsn = "NHDWaterbody",
       buffer_dist = units::as_units(0.5, "km"),
-      approve_all_dl = approve_all_dl, ...)$sp$NHDWaterbody
+      approve_all_dl = approve_all_dl,
+      temporary = temporary, ...)$sp$NHDWaterbody
     poly          <- poly[which.max(st_area(poly)), ] # find lake polygon
     network_lines <- nhd_plus_query(poly = poly,
       dsn = "NHDFlowline", ...)$sp$NHDFlowline
@@ -222,7 +254,7 @@ leaf_reaches <- function(lon = NA, lat = NA, network = NA,
   }
 
   network_table <- nhd_plus_load(vpu = vpu, "NHDPlusAttributes",
-    "PlusFlow", approve_all_dl = approve_all_dl)
+    "PlusFlow", approve_all_dl = approve_all_dl, temporary = temporary)
   names(network_table) <- tolower(names(network_table))
   names(network_lines) <- tolower(names(network_lines))
 
@@ -232,7 +264,8 @@ leaf_reaches <- function(lon = NA, lat = NA, network = NA,
       .data$tocomid %in% network_lines$comid)
 
   # find nodes with upstream connections but not in the focal set
-  up_one <- network_table[network_table$tocomid  %in% network_table_focal$fromcomid, ]
+  up_one <- network_table[
+    network_table$tocomid  %in% network_table_focal$fromcomid, ]
   res <- up_one[!(up_one$fromcomid %in% network_table_focal$tocomid), ]
 
   res <- res[which(res$tocomid != 0 & res$fromcomid != 0), ]
@@ -254,7 +287,10 @@ leaf_reaches <- function(lon = NA, lat = NA, network = NA,
 #' @param lat numeric decimal degree latitude
 #' @inheritParams terminal_reaches
 #' @param maxsteps maximum number of stream climbing iterations
-#' @param lines sf spatial lines object to limit the extent of the network search
+#' @param lines sf spatial lines object to limit extent of the network search
+#' @param lines_network boolean treat lines as the complete network object.
+#'  If FALSE, simply start network extraction at the terminal reach of the
+#'  lines object.
 #' @param ... parameters passed on to sf::st_read
 #'
 #' @return An sf data frame with LINESTRING geometries
@@ -290,8 +326,9 @@ leaf_reaches <- function(lon = NA, lat = NA, network = NA,
 #' mapview(res)
 #' }
 extract_network <- function(lon = NA, lat = NA, lines = NA,
-                            buffer_dist = 0.01, maxsteps = 3,
-                            approve_all_dl = FALSE, ...) {
+                            lines_network = TRUE, buffer_dist = 0.01,
+                            maxsteps = 3, approve_all_dl = FALSE,
+                            temporary = TRUE, ...) {
 
   if (!interactive()) {
     approve_all_dl <- TRUE
@@ -301,24 +338,45 @@ extract_network <- function(lon = NA, lat = NA, lines = NA,
     stop("extract_network only accepts a single lon-lat pair.")
   }
 
+  # if coords are na attempt to pull from lines object
+  if (all(is.na(c(lon, lat)))) {
+    # line_sample doesn't allow 4326 operations :(
+    coords <- sf::st_transform(st_cast(
+      sf::st_line_sample(sf::st_transform(lines, 3395), sample = 0),
+      "POINT"), 4326)
+    coords <- st_coordinates(coords)
+    lon <- coords[1]
+    lat <- coords[2]
+  }
+
   # retrieve network table
   pnt             <- st_sfc(st_point(c(lon, lat)))
   st_crs(pnt)     <- st_crs(nhdR::vpu_shp)
   vpu             <- find_vpu(pnt)
   network_table   <- nhd_plus_load(vpu = vpu, "NHDPlusAttributes",
-    "PlusFlow", approve_all_dl = approve_all_dl)
+    "PlusFlow", approve_all_dl = approve_all_dl, temporary = temporary)
   names(network_table) <- tolower(names(network_table))
 
   if (all(!is.na(lines))) {
     names(lines) <- tolower(names(lines))
-    # filter network table by line comids
-    network_table <- dplyr::filter(network_table, .data$tocomid %in% lines$comid |
-      .data$fromcomid %in% lines$comid)
   }
 
-  t_reaches     <- terminal_reaches(lon, lat, buffer_dist = buffer_dist,
-    lakewise = TRUE, pretty = TRUE,
-    approve_all_dl = approve_all_dl, ...)
+  if (all(!is.na(lines)) & lines_network) {
+    # filter network table by line comids
+    network_table <- dplyr::filter(network_table,
+      .data$tocomid %in% lines$comid | .data$fromcomid %in% lines$comid)
+  }
+
+  if (lines_network) {
+    t_reaches <- terminal_reaches(lon, lat, buffer_dist = buffer_dist,
+      lakewise = TRUE, pretty = TRUE,
+      approve_all_dl = approve_all_dl,
+      temporary = temporary, ...)
+  } else {
+    t_reaches <- terminal_reaches(network = lines, pretty = TRUE,
+      approve_all_dl = approve_all_dl, temporary = temporary, ...)
+  }
+
   temp_reaches  <- neighbors(t_reaches$comid, network_table, direction = "up")
   res_reaches   <- temp_reaches
 
@@ -344,9 +402,10 @@ extract_network <- function(lon = NA, lat = NA, lines = NA,
     # lines_file <- nhd_plus_list(vpu, "NHDSnapshot", full.names = TRUE,
     #                             file_ext = "shp")
     # lines_file <- lines_file[grep("NHDFlowline", lines_file)]
-    if (all(is.na(lines))) {
+    if (all(is.na(lines)) | !lines_network) {
       lines        <- nhd_plus_load(vpu, "NHDSnapshot", "NHDFlowline",
-        pretty = TRUE, approve_all_dl = approve_all_dl, ...)
+        pretty = TRUE, approve_all_dl = approve_all_dl, temporary = temporary,
+        ...)
       names(lines) <- tolower(names(lines))
     }
 
@@ -362,7 +421,9 @@ extract_network <- function(lon = NA, lat = NA, lines = NA,
     }
 
     # pull first order streams
-    l_reach <- leaf_reaches(network = res, pretty = TRUE, approve_all_dl = approve_all_dl)
+    l_reach <- leaf_reaches(
+      network = res, pretty = TRUE, approve_all_dl = approve_all_dl,
+      temporary = temporary)
     if (nrow(l_reach) > 0) {
       first_order_reaches <- neighbors(l_reach$comid, network_table,
         direction = "up")
@@ -383,4 +444,37 @@ neighbors <- function(node, network_table, direction = c("up", "down")) {
     res <- dplyr::filter(network_table, .data$tocomid %in% node)
     dplyr::filter(res, .data$fromcomid != 0)
   }
+}
+
+#' Return tip reaches from a network
+#'
+#' A tip reach is a stream flowline with no upstream connections.
+#'
+#' @inheritParams terminal_reaches
+#' @return An sf data frame with LINESTRING geometries
+#' @export
+#'
+#' @examples \dontrun{
+#'
+#' coords  <- data.frame(lat = 41.42217, lon = -73.24189)
+#' network <- nhd_plus_query(lon = coords$lon, lat = coords$lat,
+#'   dsn = "NHDFlowline", buffer_dist = units::as_units(5, "km"))$sp$NHDFlowline
+#' t_reaches <- tip_reaches(network = network)
+#'
+#' plot(network$geometry)
+#' plot(t_reaches$geometry, col = "red", add = TRUE)
+#' }
+tip_reaches <- function(network = NA) {
+
+  end_points <- sf::st_transform(
+    st_line_sample_4326(network), sf::st_crs(network))
+  end_points <- sf::st_buffer(end_points, dist = 50)
+
+  is_tip_reach <- unlist(lapply(
+    sf::st_intersects(end_points, network), function(x) length(x) == 1))
+
+  candidate_reaches <- lapply(
+    sf::st_intersects(end_points, network),
+    function(x) x)
+  network[unlist(candidate_reaches[is_tip_reach]),]
 }
