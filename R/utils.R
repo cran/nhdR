@@ -67,7 +67,7 @@ zero_pad <- function(x, digits) {
 
 get_remotepath <- function(state, baseurl) {
   # state  <- "Missouri"
-  # baseurl <- paste0("https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/NHD/State/HighResolution/")
+  # baseurl <- paste0("https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/NHD/State/")
   filename <- paste0("NHD_H_", state, "_State_GDB.zip")
   url      <- paste0(baseurl, "GDB/", filename)
   list(filename = filename, url = url)
@@ -85,7 +85,7 @@ get_plus_remotepath <- function(vpu, component = "NHDSnapshot") {
   }
 
   baseurl <- paste0(
-    "https://s3.amazonaws.com/edap-nhdplus?delimiter=/&prefix=",
+    "https://edap-ow-data-commons.s3.amazonaws.com?delimiter=/&prefix=",
     prefix)
   res <- read_xml(baseurl)
   res <- stringr::str_extract_all(as.character(res),
@@ -100,7 +100,7 @@ get_plus_remotepath <- function(vpu, component = "NHDSnapshot") {
   res <- res[!(seq_len(length(res)) %in%
     c(grep("FGDB", res), grep(".pdf", res), grep("FileGDB", res)))]
 
-  paste0("https://s3.amazonaws.com/edap-nhdplus/", res[1])
+  paste0("https://edap-ow-data-commons.s3.amazonaws.com/", res[1])
 }
 
 is_spatial <- function(filename) {
