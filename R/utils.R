@@ -177,14 +177,7 @@ find_state <- function(pnt, abb = FALSE) {
 }
 
 nhd_read_dbf <- function(state, dsn) {
-  temp_dir <- tempdir()
-  # sf::gdal_utils("info", normalizePath(gdb_path(state)))
-  suppressWarnings(sf::gdal_utils("vectortranslate",
-    normalizePath(gdb_path(state)),
-    temp_dir,
-    options = c("-overwrite")
-  ))
-  read.dbf(file.path(temp_dir, paste0(dsn, ".dbf")))
+  sf::st_read(normalizePath(gdb_path(state)), dsn)
 }
 
 # https://stackoverflow.com/a/9188972/3362993
@@ -286,10 +279,10 @@ get_utm_zone <- function(crs) {
 
 stateabb2name <- function(abb) {
   # state <- "DC"
-  key <- data.frame(sabb = c(datasets::state.abb, "DC"),
+  key <- data.frame(sabb = c(datasets::state.abb, "DC", "AS", "GU", "MP", "PR", "VI"),
     sname =
       gsub(" ", "_",
-        c(datasets::state.name, "District of Columbia")),
+        c(datasets::state.name, "District of Columbia", "American Samoa", "Guam", "Northern Mariana Islands", "Puerto Rico", "United States Virgin Islands")),
     stringsAsFactors = FALSE)
 
   res <- dplyr::filter(key, .data$sabb == abb)
